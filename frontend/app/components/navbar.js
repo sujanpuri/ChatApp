@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function DashboardPage() {
-  const [active, setActive] = useState("Users");
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const router = useRouter();
 
   const navLinks = [
     { name: "Users", href: "/routes/Users", icon: UsersIcon },
@@ -21,7 +20,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="h-screen bg-white text-gray-900">
+    <div className="bg-white text-gray-900">
       <header className="flex justify-between items-center h-16 px-6 border-b bg-gray-100 shadow-sm">
         {/* Left: Navigation */}
         <nav className="flex gap-4">
@@ -29,9 +28,9 @@ export default function DashboardPage() {
             <Link
               key={name}
               href={href}
-              onClick={() => setActive(name)}
+
               className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all text-sm font-semibold ${
-                active === name
+                pathname === href
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
               }`}

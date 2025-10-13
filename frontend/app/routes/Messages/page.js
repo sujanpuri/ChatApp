@@ -4,7 +4,11 @@ import React from 'react'
 const Messages = () => {
   return (
     <div className='bg-white text-black min-h-screen'>
-        <Navbar />This is Messages</div>
+        <Navbar />
+        <div>
+          This is Messages
+        </div>
+      </div>
   )
 }
 

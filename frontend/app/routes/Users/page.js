@@ -5,8 +5,10 @@ const Users = () => {
   return (
     <div className='bg-white text-black min-h-screen'>
         <Navbar />
-        
-        This is Users</div>
+        <div>
+          This is Users
+        </div>
+      </div>
   )
 }
 
