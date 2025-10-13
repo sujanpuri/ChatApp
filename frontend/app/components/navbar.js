@@ -69,7 +69,7 @@ export default function DashboardPage() {
               <p className="font-semibold">{currentUser?.name || "Anonymous"}</p>
               <p className="text-xs text-gray-500">{currentUser?.email || "No Email"}</p>
             </div>
-            <Image src={currentUser?.photoURL || "/default-avatar.png"} alt="Avatar" width={32} height={32} className="rounded-full object-cover" />
+            <Image src={currentUser?.photoURL || "/image.png"} alt="Avatar" width={32} height={32} className="rounded-full object-cover" />
             <svg
               className={`w-4 h-4 transition-transform ${menuOpen ? "rotate-180" : ""}`}
               fill="none"

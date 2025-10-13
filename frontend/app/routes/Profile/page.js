@@ -10,8 +10,11 @@ export default function ProfilePage() {
 
   if (!currentUser) {
     return (
-      <div className="p-6 text-center text-gray-500">
-        Loading user details...
+      <div className="bg-gray-200 min-h-screen">
+        <Navbar />
+        <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-md mt-6">
+          Loading user details...
+        </div>
       </div>
     );
   }
