@@ -17,10 +17,10 @@ export default function RegisterPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, "users", userCredential.user.uid), {
-        name,
+        name: name || "Anonymous",
         email,
         createdAt: new Date(),
-      });
+      }, { merge: true });
       alert("Registered successfully!");
       router.push("/login");
     } catch (err) {

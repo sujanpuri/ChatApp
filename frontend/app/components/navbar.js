@@ -2,11 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useUser } from "../context/UserContext";
+import Image from "next/image";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { currentUser } = useUser();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   const navLinks = [
     { name: "Users", href: "/routes/Users", icon: UsersIcon },
@@ -15,9 +30,11 @@ export default function DashboardPage() {
 
   const profileMenu = [
     { name: "View Profile", href: "/routes/Profile", icon: ProfileIcon },
-    { name: "Edit Profile", href: "/routes/Profile/Edit", icon: EditIcon },
-    { name: "Settings", href: "/routes/Settings", icon: SettingsIcon },
+    { name: "Edit Profile", href: "#", icon: EditIcon },
+    { name: "Settings", href: "#", icon: SettingsIcon },
   ];
+
+  console.log("Current User in Navbar:", currentUser);
 
   return (
     <div className="bg-white text-gray-900">
@@ -43,17 +60,16 @@ export default function DashboardPage() {
 
         {/* Right: Profile Dropdown */}
         <div className="relative">
+          {/* Profile Avatar details */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-blue-100 transition-all"
           >
             <div className="text-right text-sm">
-              <p className="font-semibold">John Doe</p>
-              <p className="text-xs text-gray-500">john@example.com</p>
+              <p className="font-semibold">{currentUser?.name || "Anonymous"}</p>
+              <p className="text-xs text-gray-500">{currentUser?.email || "No Email"}</p>
             </div>
-            <div className="w-9 h-9 bg-blue-600 text-white flex items-center justify-center rounded-full font-bold">
-              JD
-            </div>
+            <Image src={currentUser?.photoURL || "/default-avatar.png"} alt="Avatar" width={32} height={32} className="rounded-full object-cover" />
             <svg
               className={`w-4 h-4 transition-transform ${menuOpen ? "rotate-180" : ""}`}
               fill="none"
@@ -77,7 +93,7 @@ export default function DashboardPage() {
               ))}
 
               <button
-                onClick={() => router.push("/login")}
+                onClick={handleSignOut}
                 className="flex items-center gap-2 px-4 py-2 w-full text-sm text-red-600 hover:bg-red-50 border-t"
               >
                 <LogoutIcon /> Sign Out
