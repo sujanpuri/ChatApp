@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import messageRoutes from "./routes/MessageRoutes.js"
+import chatRoutes from "./routes/chatRoutes.js"
 
 dotenv.config();
 connectDB();
@@ -17,6 +18,7 @@ app.use(express.json());
 
 app.get("/", (req, res) => res.send("🚀 Messaging API Running"));
 app.use("/api/messages", messageRoutes);
+app.use("/api/chats", chatRoutes);
 
 const io = new Server(server, {
   cors: { origin: "*" },

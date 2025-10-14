@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
   {
-    members: {
-      type: [String], // Array of Firebase UIDs
+    participants: {
+      type: [String], // store user IDs (from Firebase)
       required: true,
     },
   },

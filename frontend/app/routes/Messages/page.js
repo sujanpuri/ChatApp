@@ -1,15 +1,25 @@
-import Navbar from '@/app/components/navbar'
-import React from 'react'
+"use client";
+import { useUser } from "@/app/context/UserContext";
+import ChatBox from "@/app/components/ChatBox";
+import Navbar from "@/app/components/navbar";
 
-const Messages = () => {
+export default function ChatPage() {
+  const { currentUser } = useUser();
+
+  // console.log("Messages Page - Current User:", currentUser);
+  // Example chatId — in real app, get it from chat list or create when opening chat
+  const chatId = currentUser.uid; // unique id or fetched from backend
+
+  if (!currentUser) return <p>Loading...</p>;
+
   return (
-    <div className='bg-white text-black min-h-screen'>
-        <Navbar />
-        <div>
-          This is Messages
+    <div className="min-h-screen flex flex-col bg-gray-200">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg h-[80vh]">
+          <ChatBox currentUser={currentUser} chatId={chatId} />
         </div>
       </div>
-  )
+    </div>
+  );
 }
-
-export default Messages

@@ -51,7 +51,8 @@ export const UserProvider = ({ children }) => {
     fetchUsers()
   }, [currentUser])
 
-  // console.log("UserContext - Current User:", currentUser)
+  console.log("UserContext - All Users:", allUsers)
+  console.log("UserContext - Current User:", currentUser)
 
   return (
     <UserContext.Provider value={{ currentUser, allUsers, loading }}>

@@ -34,7 +34,7 @@ export default function DashboardPage() {
     { name: "Settings", href: "#", icon: SettingsIcon },
   ];
 
-  console.log("Current User in Navbar:", currentUser);
+  // console.log("Current User in Navbar:", currentUser);
 
   return (
     <div className="bg-white text-gray-900">
