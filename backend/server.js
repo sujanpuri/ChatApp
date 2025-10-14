@@ -1,58 +1,43 @@
 import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import cors from "cors";
+import dotenv from "dotenv";
 import connectDB from "./config/db.js";
-import userRoutes from "./routes/userRoutes.js";
-import chatRoutes from "./routes/chatRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
+import messageRoutes from "./routes/MessageRoutes.js"
 
 dotenv.config();
 connectDB();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
+const server = http.createServer(app);
 
-// API routes
-app.use("/api/users", userRoutes);
-app.use("/api/chats", chatRoutes);
+app.use(cors());
+app.use(express.json());
+
+app.get("/", (req, res) => res.send("🚀 Messaging API Running"));
 app.use("/api/messages", messageRoutes);
 
-// Start server
-const server = http.createServer(app);
 const io = new Server(server, {
-  pingTimeout: 60000,
   cors: { origin: "*" },
 });
 
 io.on("connection", (socket) => {
-  console.log("🟢 User connected to socket.io");
+  console.log("🟢 User Connected:", socket.id);
 
-  socket.on("setup", (userData) => {
-    socket.join(userData._id);
-    socket.emit("connected");
+  socket.on("join_chat", (chatId) => {
+    socket.join(chatId);
+    console.log(`User joined chat: ${chatId}`);
   });
 
-  socket.on("join chat", (room) => {
-    socket.join(room);
-    console.log("User joined room: " + room);
-  });
-
-  socket.on("new message", (newMessage) => {
-    let chat = newMessage.chat;
-    if (!chat.users) return;
-    chat.users.forEach((user) => {
-      if (user._id === newMessage.sender._id) return;
-      socket.in(user._id).emit("message received", newMessage);
-    });
+  socket.on("send_message", (data) => {
+    io.to(data.chatId).emit("receive_message", data);
   });
 
   socket.on("disconnect", () => {
-    console.log("🔴 User disconnected");
+    console.log("🔴 User Disconnected:", socket.id);
   });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
