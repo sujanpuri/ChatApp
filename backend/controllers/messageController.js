@@ -30,7 +30,7 @@ export const getMessages = async (req, res) => {
 
     const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
 
-    console.log(`Messages for chat: `, messages);
+    // console.log(`Messages for chat: `, messages);
     res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ message: error.message });
