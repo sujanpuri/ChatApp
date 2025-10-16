@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
   const navLinks = [
     { name: "Users", href: "/routes/Users", icon: UsersIcon },
-    { name: "Messages", href: "/routes/Messages", icon: MessageIcon },
+    { name: "Messages", href: "/routes/Messages/Group", icon: MessageIcon },
   ];
 
   const profileMenu = [

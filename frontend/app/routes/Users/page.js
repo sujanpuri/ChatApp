@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { useUser } from "@/app/context/UserContext";
 import Navbar from "@/app/components/navbar";
 import Image from "next/image";
-import { createOrGetChat } from "@/app/api/chatApi";
 import { useRouter } from "next/navigation";
 
 export default function UsersPage() {
@@ -33,8 +32,9 @@ export default function UsersPage() {
 
   const handleStartChat = async (receiverId) => {
     try {
-      const chat = await createOrGetChat(currentUser.uid, receiverId);
-      router.push(`/routes/Messages/${receiverId}`);
+      // const chat = await createOrGetChat(currentUser.uid, receiverId);
+      // router.push(`/routes/Messages/${receiverId}`);
+      router.push('#');
     } catch (error) {
       console.error("Error starting chat:", error);
     }
@@ -76,7 +76,7 @@ export default function UsersPage() {
                   className="p-3 rounded shadow flex items-center gap-3 hover:bg-gray-100 cursor-pointer transition"
                 >
                   <Image
-                    src={u.photoURL || "/image.png"}
+                    src={u.photoURL || "/images.png"}
                     alt={u.name || "Anonymous"}
                     width={40}
                     height={40}
