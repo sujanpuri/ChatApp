@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser } from "@/app/context/UserContext";
 import API from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { socket } from "@/lib/socket";
 import Navbar from "@/app/components/navbar";
+import { formatDistanceToNow } from "date-fns";
 
 export default function MessagesPage() {
   const { currentUser } = useUser();
@@ -13,6 +14,7 @@ export default function MessagesPage() {
   const [activeChat, setActiveChat] = useState(null);
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const messageEndRef = useRef(null);
 
   // --- Fetch user's group chats ---
   const { data: chats } = useQuery({
@@ -56,6 +58,7 @@ export default function MessagesPage() {
     const msgData = {
       chatId: activeChat.chatId,
       senderId: currentUser.uid,
+      senderName: currentUser.name,
       text: newMessage,
     };
 
@@ -110,6 +113,16 @@ export default function MessagesPage() {
     }
   };
 
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Sort messages by createdAt (oldest to newest)
+  const sortedMessages = [...messages].sort(
+    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+  );
+
   console.log("messsages", messages);
   return (
     <div className="flex min-h-screen bg-gray-200 text-black">
@@ -117,30 +130,8 @@ export default function MessagesPage() {
         <Navbar />
 
         <div className="flex">
-          {/* Sidebar: list of group chats */}
-          <div className="w-1/4 border-r p-4">
-            <button
-              className="mb-4 bg-blue-500 text-white p-2 rounded"
-              onClick={createChat}
-            >
-              + Create Group
-            </button>
-            <ul>
-              {chats?.map((chat) => (
-                <li
-                  key={chat.chatId}
-                  className={`p-2 cursor-pointer ${
-                    activeChat?.chatId === chat.chatId ? "bg-gray-200" : ""
-                  }`}
-                  onClick={() => setActiveChat(chat)}
-                >
-                  {chat.name}
-                </li>
-              ))}
-            </ul>
-          </div>
 
-          {/* Chat window */}
+          {activeChat ? (
           <div className="flex-1 p-4 flex flex-col h-[90vh]">
             {activeChat ? (
               <>
@@ -153,22 +144,68 @@ export default function MessagesPage() {
                     + Add Members
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto border p-2 mb-2">
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`mb-2 ${
-                        msg.senderId === currentUser?.uid
-                          ? "text-right"
-                          : "text-left"
-                      }`}
-                    >
-                      <span className="px-2 py-1 rounded bg-gray-300 inline-block">
-                        <div>{msg.senderId === currentUser?.uid ? currentUser?.name : msg.senderId}</div>
-                        {msg.text}
-                      </span>
-                    </div>
-                  ))}
+
+                <div className="flex-1 overflow-y-auto border p-4 mb-2 rounded-lg bg-white scroll-smooth">
+                  {sortedMessages.map((msg, idx) => {
+                    const isMine = msg.senderId === currentUser?.uid;
+
+                    // ✅ Safe timestamp handling (no crash)
+                    let timeAgo = "Just now";
+                    try {
+                      if (msg.createdAt && !isNaN(new Date(msg.createdAt))) {
+                        timeAgo = formatDistanceToNow(new Date(msg.createdAt), {
+                          addSuffix: true,
+                        });
+                      }
+                    } catch (err) {
+                      timeAgo = "Just now";
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`mb-3 flex ${
+                          isMine ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[70%] p-3 rounded-2xl shadow-md relative group transition-all duration-200 ${
+                            isMine
+                              ? "bg-blue-500 text-white rounded-br-none"
+                              : "bg-gray-200 text-black rounded-bl-none"
+                          }`}
+                        >
+                          {/* Sender name */}
+                          <div
+                            className={`text-xs mb-1 font-medium ${
+                              isMine ? "text-blue-100" : "text-gray-600"
+                            }`}
+                          >
+                            {isMine
+                              ? currentUser?.name || "You"
+                              : msg.senderName || "User"}
+                          </div>
+
+                          {/* Message text */}
+                          <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                            {msg.text}
+                          </div>
+
+                          {/* Time sent */}
+                          <div
+                            className={`text-[10px] mt-1 text-right ${
+                              isMine ? "text-blue-100" : "text-gray-500"
+                            }`}
+                          >
+                            {timeAgo}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Empty div to auto-scroll to bottom */}
+                  <div ref={messageEndRef} />
                 </div>
                 <div className="flex">
                   <input
@@ -191,7 +228,30 @@ export default function MessagesPage() {
                 Select a group to start chatting
               </div>
             )}
-          </div>
+          </div>) : (
+          <div className="w-screen border-r p-4">
+            <button
+              className="mb-4 bg-blue-500 text-white p-2 rounded"
+              onClick={createChat}
+            >
+              + Create Group
+            </button>
+            <ul>
+              {chats?.map((chat) => (
+                <li
+                  key={chat.chatId}
+                  className={`p-2 cursor-pointer ${
+                    activeChat?.chatId === chat.chatId ? "bg-gray-200" : ""
+                  }`}
+                  onClick={() => setActiveChat(chat)}
+                >
+                  {chat.name}
+                </li>
+              ))}
+            </ul>
+          </div>)}
+
+
         </div>
       </div>
     </div>
