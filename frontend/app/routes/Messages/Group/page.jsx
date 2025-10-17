@@ -27,6 +27,7 @@ export default function MessagesPage() {
   const [open, setOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
 
   // --- Fetch user's group chats ---
   const { data: chats } = useQuery({
@@ -191,6 +192,8 @@ export default function MessagesPage() {
                         {activeChat.name}
                       </h2>
                     </div>
+
+                    <button onClick={handleClick}>Show Alert</button>
 
                     {/* Right side: Add Members button */}
                     <button
@@ -388,6 +391,11 @@ export default function MessagesPage() {
 
         </div>
       </div>
+      {showAlert && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+          This is an alert message!
+        </div>
+      )}
     </div>
   );
 }
