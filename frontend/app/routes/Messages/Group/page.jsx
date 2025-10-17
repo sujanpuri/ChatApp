@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useUser } from "../../../context/UserContext";
 import API from "../../../../lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import {
 } from "../../../components/ui/popover";
 import { Plus, Users } from "lucide-react";
 import { Toaster } from "sonner";
+import Image from "next/image";
 
 export default function MessagesPage() {
   const { currentUser, allUsers } = useUser();
@@ -28,6 +29,8 @@ export default function MessagesPage() {
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [searchMembers, setSearchMembers] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
   // --- Fetch user's group chats ---
   const { data: chats } = useQuery({
@@ -116,21 +119,20 @@ export default function MessagesPage() {
   };
 
   // Add this function inside MessagesPage component
-  const addMembers = async () => {
+  const addMembers = async (uid) => {
     if (!activeChat) return alert("Select a group first!");
-
-    // Ask for comma-separated uids
-    const input = prompt("Enter user IDs to add (comma separated):");
-    if (!input) return;
-
-    const newMembers = input.split(",").map((uid) => uid.trim());
-    if (!newMembers.length) return;
+    if (selectedUsers.length === 0) return alert("Select at least one user!");
 
     try {
       await API.put(`/chats/${activeChat.chatId}/add-members`, {
-        members: newMembers,
+        members: selectedUsers,
       });
+
       alert("Members added successfully!");
+
+      setSelectedUsers([]);
+      setSearchMembers("");
+      setOpen(false);
 
       // Refresh chat list
       queryClient.invalidateQueries(["userChats", currentUser.uid]);
@@ -149,6 +151,23 @@ export default function MessagesPage() {
   const sortedMessages = [...messages].sort(
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
   );
+
+  // Filter users based on search
+  const filteredUsers = useMemo(() => {
+    return allUsers?.filter(
+      (user) =>
+        user.uid !== currentUser?.uid &&
+        (user.name.toLowerCase().includes(searchMembers.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchMembers.toLowerCase()))
+    );
+  }, [allUsers, currentUser, searchMembers]);
+
+  // Toggle user selection
+  const toggleSelect = (uid) => {
+    setSelectedUsers((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+    );
+  };
 
   const handleClick = () => {
     setShowAlert(true); // show the alert
@@ -193,30 +212,106 @@ export default function MessagesPage() {
                       </h2>
                     </div>
 
-                    <button onClick={handleClick}>Show Alert</button>
-
                     {/* Right side: Add Members button */}
-                    <button
-                      onClick={addMembers}
-                      className="flex items-center bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg shadow hover:shadow-md hover:scale-105 transition-transform duration-200"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      Add Members
-                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg shadow hover:shadow-md hover:scale-105 transition-transform duration-200">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4 mr-2"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M12 4v16m8-8H4"
+                              />
+                            </svg>
+                            Add Members
+                          </button>
+                        </PopoverTrigger>
+
+                        <PopoverContent className="w-72 bg-white dark:bg-neutral-900 shadow-lg rounded-xl p-3 border border-gray-200 dark:border-gray-700">
+                          <h3 className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-200">
+                            Select Users
+                          </h3>
+
+                          {/* Search Input */}
+                          <input
+                            type="text"
+                            placeholder="Search user..."
+                            value={searchMembers}
+                            onChange={(e) => setSearchMembers(e.target.value)}
+                            className="w-full mb-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-neutral-800 dark:border-gray-700 dark:text-gray-200"
+                          />
+
+                          {/* User List */}
+                          <div className="max-h-48 overflow-y-auto space-y-2">
+                            {filteredUsers?.length > 0 ? (
+                              filteredUsers.map((user) => {
+                                const isSelected = selectedUsers.includes(
+                                  user.uid
+                                );
+                                return (
+                                  <button
+                                    key={user.uid}
+                                    onClick={() => toggleSelect(user.uid)}
+                                    className={`flex items-center gap-3 w-full text-left px-2 py-2 rounded-lg transition ${
+                                      isSelected
+                                        ? "bg-green-100 dark:bg-green-800"
+                                        : "hover:bg-green-50 dark:hover:bg-neutral-800"
+                                    }`}
+                                  >
+                                    <Image
+                                      src={user.photoURL}
+                                      alt={user.name}
+                                      width={32}
+                                      height={32}
+                                      className="rounded-full"
+                                    />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                                        {user.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {user.email}
+                                      </p>
+                                    </div>
+                                    {isSelected && (
+                                      <span className="text-green-600 dark:text-green-400 font-bold text-lg">
+                                        ✓
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                No users found
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Add Selected Button */}
+                          {selectedUsers.length > 0 && (
+                            <button
+                              onClick={addMembers}
+                              className="mt-3 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                            >
+                              Add {selectedUsers.length} Member
+                              {selectedUsers.length > 1 ? "s" : ""}
+                            </button>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
+
                   <div className="flex-1 flex flex-col p-4 h-[78vh] mb-2 rounded-lg bg-white">
                     {/* Messages scrollable area */}
                     <div className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar mb-4">
@@ -388,7 +483,6 @@ export default function MessagesPage() {
               </ul>
             </div>
           )}
-
         </div>
       </div>
       {showAlert && (
