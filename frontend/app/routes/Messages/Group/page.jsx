@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useUser } from "@/app/context/UserContext";
-import API from "@/lib/api";
+import { useUser } from "../../../context/UserContext";
+import API from "../../../../lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { socket } from "@/lib/socket";
-import Navbar from "@/app/components/navbar";
+import { socket } from "../../../../lib/socket";
+import Navbar from "../../../components/navbar";
 import { formatDistanceToNow } from "date-fns";
 import { Search } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/app/components/ui/popover";
+} from "../../../components/ui/popover";
 import { Plus, Users } from "lucide-react";
+import { Toaster } from "sonner";
 
 export default function MessagesPage() {
-  const { currentUser } = useUser();
+  const { currentUser, allUsers } = useUser();
   const queryClient = useQueryClient();
   const [activeChat, setActiveChat] = useState(null);
   const [newMessage, setNewMessage] = useState("");
@@ -148,7 +149,11 @@ export default function MessagesPage() {
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
   );
 
-  console.log("messsages", messages);
+  const handleClick = () => {
+    setShowAlert(true); // show the alert
+    setTimeout(() => setShowAlert(false), 3000); // auto-hide after 3 sec
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-200 text-black">
       <div className="flex flex-col min-w-screen h-screen">
@@ -348,22 +353,6 @@ export default function MessagesPage() {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-sm text-gray-600">
-                        Member UIDs
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Comma separated user IDs"
-                        className="w-full text-black border rounded p-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                        value={members}
-                        onChange={(e) => setMembers(e.target.value)}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Example: user1, user2, user3
-                      </p>
-                    </div>
-
                     <button
                       onClick={createChat}
                       className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
@@ -396,6 +385,7 @@ export default function MessagesPage() {
               </ul>
             </div>
           )}
+
         </div>
       </div>
     </div>

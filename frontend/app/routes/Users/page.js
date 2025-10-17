@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useUser } from "@/app/context/UserContext";
-import Navbar from "@/app/components/navbar";
+import { useUser } from "../../context/UserContext";
+import Navbar from "../../components/navbar"
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useContext } from "react";
-import { UserContext } from "@/app/context/UserContext";
+import { UserContext } from "../../context/UserContext";
 import Image from "next/image";
-import Navbar from "@/app/components/navbar";
+import Navbar from "../../components/navbar";
 
 export default function ProfilePage() {
   const { currentUser } = useContext(UserContext);
