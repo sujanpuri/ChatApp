@@ -3,9 +3,9 @@ import Message from "../models/Message.js";
 // Send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { chatId, senderId, senderName, text } = req.body;
+    const { chatId, senderId, senderName, senderImg, text } = req.body;
 
-    if (!chatId || !senderId || !senderName || !text) {
+    if (!chatId || !senderId || !senderName || !senderImg || !text) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -13,9 +13,10 @@ export const sendMessage = async (req, res) => {
       chatId,
       senderId,
       senderName,
+      senderImg,
       text,
     });
-    // console.log("Message sent: ", message);
+    console.log("Message sent: ", message);
 
     res.status(201).json(message);
   } catch (error) {
@@ -34,5 +35,24 @@ export const getMessages = async (req, res) => {
     res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Mark messages as seen
+export const markMessagesSeen = async (req, res) => {
+  try {
+    const { chatId, userId } = req.body;
+
+    // Add userId to all unseen messages in this chat
+    await Message.updateMany(
+      { chatId, seenBy: { $ne: userId } },
+      { $push: { seenBy: userId } }
+    );
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Mark messages seen error:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 };

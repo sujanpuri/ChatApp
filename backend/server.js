@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import connectDB from "./config/db.js"
+import connectDB from "./config/db.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import { createServer } from "http";
@@ -16,8 +16,8 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: "*", // frontend URL here
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 // Socket.io connection
@@ -34,6 +34,26 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", (data) => {
     // data = { chatId, senderId, text }
     io.to(data.chatId).emit("receiveMessage", data);
+  });
+
+  // Typing indicator
+  socket.on("typing", ({ chatId, userId, name, image }) => {
+    socket.to(chatId).emit("userTyping", { userId, name, image });
+  });
+  socket.on("stopTyping", ({ chatId, userId, name, image }) => {
+    socket.to(chatId).emit("userStopTyping", { userId, name, image });
+  });
+
+  // Real-time message seen
+  socket.on("messageSeen", async ({ chatId, userId }) => {
+    const Message = (await import("./models/Message.js")).default;
+
+    await Message.updateMany(
+      { chatId, seenBy: { $ne: userId } },
+      { $push: { seenBy: userId } }
+    );
+
+    socket.to(chatId).emit("updateSeen", { chatId, userId });
   });
 
   socket.on("disconnect", () => {

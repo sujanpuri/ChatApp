@@ -31,6 +31,8 @@ export default function MessagesPage() {
   const [showAlert, setShowAlert] = useState(false);
   const [searchMembers, setSearchMembers] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
 
   // --- Fetch user's group chats ---
   const { data: chats } = useQuery({
@@ -49,6 +51,7 @@ export default function MessagesPage() {
     const fetchMessages = async () => {
       const res = await API.get(`/messages/${activeChat.chatId}`);
       setMessages(res.data);
+      console.log("Fetched messages: ", res.data);
       socket.emit("joinRoom", activeChat.chatId); // join socket room
     };
 
@@ -75,6 +78,7 @@ export default function MessagesPage() {
       chatId: activeChat.chatId,
       senderId: currentUser.uid,
       senderName: currentUser.name,
+      senderImg: currentUser.photoURL,
       text: newMessage,
     };
 
@@ -142,25 +146,39 @@ export default function MessagesPage() {
     }
   };
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom when messages change
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!activeChat) return;
+
+    // Scroll to bottom when chat loads
+    setTimeout(() => {
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 300); // small delay to ensure messages are rendered
+  }, [activeChat]);
 
   // Sort messages by createdAt (oldest to newest)
   const sortedMessages = [...messages].sort(
     (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
   );
 
-  // Filter users based on search
+  // Filter users based on search and exclude already added members
   const filteredUsers = useMemo(() => {
-    return allUsers?.filter(
-      (user) =>
-        user.uid !== currentUser?.uid &&
-        (user.name.toLowerCase().includes(searchMembers.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchMembers.toLowerCase()))
-    );
-  }, [allUsers, currentUser, searchMembers]);
+    return allUsers?.filter((user) => {
+      // Exclude current user
+      if (user.uid === currentUser?.uid) return false;
+
+      // Exclude users already in the group
+      const isAlreadyMember = activeChat?.members?.includes(user.uid);
+      console.log("isAlreadyMember: ", isAlreadyMember);
+      if (isAlreadyMember) return false;
+
+      // Search filter by name or email
+      return (
+        user.name.toLowerCase().includes(searchMembers.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchMembers.toLowerCase())
+      );
+    });
+  }, [allUsers, currentUser, searchMembers, activeChat]);
 
   // Toggle user selection
   const toggleSelect = (uid) => {
@@ -168,6 +186,102 @@ export default function MessagesPage() {
       prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
     );
   };
+
+  // --- Typing indicator ---
+  useEffect(() => {
+    socket.on("userTyping", (user) => {
+      setTypingUsers((prev) => {
+        const exists = prev.find((u) => u.userId === user.userId);
+        if (exists) return prev;
+        return [...prev, user];
+      });
+    });
+
+    socket.on("userStopTyping", (user) => {
+      setTypingUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+    });
+
+    return () => {
+      socket.off("userTyping");
+      socket.off("userStopTyping");
+    };
+  }, []);
+
+  let typingTimeout;
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+
+    // Emit typing
+    socket.emit("typing", {
+      chatId,
+      userId: currentUser._id,
+      name: currentUser.name,
+      image: currentUser.image,
+    });
+
+    // Stop typing after 1 second of no input
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit("stopTyping", {
+        chatId,
+        userId: currentUser._id,
+        name: currentUser.name,
+        image: currentUser.image,
+      });
+    }, 1000);
+  };
+
+  // --- Mark messages as seen ---
+  useEffect(() => {
+    if (!activeChat || !currentUser) return; // <-- guard
+
+    const markSeen = async () => {
+      try {
+        await API.post("/messages/seen", {
+          chatId: activeChat.chatId,
+          userId: currentUser.uid,
+        });
+
+        socket.emit("messageSeen", {
+          chatId: activeChat.chatId,
+          userId: currentUser.uid,
+        });
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.senderId !== currentUser.uid &&
+            !msg.seenBy.includes(currentUser.uid)
+              ? { ...msg, seenBy: [...msg.seenBy, currentUser.uid] }
+              : msg
+          )
+        );
+      } catch (err) {
+        console.error("Error marking messages seen:", err);
+      }
+    };
+
+    markSeen();
+  }, [messages, activeChat, currentUser]);
+
+  // --- Listen for seen updates from socket ---
+  useEffect(() => {
+    const handleSeenUpdate = ({ userId }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          !msg.seenBy.includes(userId)
+            ? { ...msg, seenBy: [...msg.seenBy, userId] }
+            : msg
+        )
+      );
+    };
+
+    socket.on("updateSeen", handleSeenUpdate);
+
+    return () => {
+      socket.off("updateSeen", handleSeenUpdate);
+    };
+  }, []);
 
   const handleClick = () => {
     setShowAlert(true); // show the alert
@@ -213,7 +327,6 @@ export default function MessagesPage() {
                     </div>
 
                     {/* Right side: Add Members button */}
-
                     <div className="flex items-center gap-3">
                       <Popover open={open} onOpenChange={setOpen}>
                         <PopoverTrigger asChild>
@@ -349,15 +462,34 @@ export default function MessagesPage() {
                                   : "bg-gray-200 text-black rounded-bl-none"
                               }`}
                             >
-                              {/* Sender name */}
-                              <div
-                                className={`text-xs mb-1 font-medium ${
-                                  isMine ? "text-blue-100" : "text-gray-600"
-                                }`}
-                              >
-                                {isMine
-                                  ? currentUser?.name || "You"
-                                  : msg.senderName || "User"}
+                              {/* Sender name and photo */}
+                              <div className="flex items-center text-xs mb-1 font-medium">
+                                <Image
+                                  src={
+                                    isMine
+                                      ? currentUser?.photoURL ||
+                                        "/default-avatar.png"
+                                      : msg.senderImg || "/default-avatar.png"
+                                  }
+                                  alt={
+                                    isMine
+                                      ? currentUser?.name || "You"
+                                      : msg.senderName || "User"
+                                  }
+                                  width={20}
+                                  height={20}
+                                  className="rounded-full mr-2"
+                                />
+                                <span
+                                  className={
+                                    isMine ? "text-blue-100" : "text-gray-600"
+                                  }
+                                >
+                                  {isMine
+                                    ? currentUser?.name || "You"
+                                    : msg.senderName || "User"}
+                                  {/* {console.log("message details: ", msg)}s */}
+                                </span>
                               </div>
 
                               {/* Message text */}
@@ -373,10 +505,57 @@ export default function MessagesPage() {
                               >
                                 {timeAgo}
                               </div>
+
+                              {/* Seen messages as avatars */}
+                              {msg.seenBy?.length > 1 && (
+                                <div className="flex justify-end mt-1 space-x-1">
+                                  {msg.seenBy
+                                    .filter((uid) => uid !== currentUser.uid) // exclude yourself
+                                    .map((uid) => {
+                                      const user = allUsers.find(
+                                        (u) => u.uid === uid
+                                      );
+                                      return (
+                                        <Image
+                                          key={uid}
+                                          src={
+                                            user?.photoURL ||
+                                            "/default-avatar.png"
+                                          } // fallback if no photo
+                                          alt={user?.name || "User"}
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full"
+                                        />
+                                      );
+                                    })}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
                       })}
+
+                      {/* 🟢 Typing indicator */}
+                      {typingUsers.length > 0 && (
+                        <div className="flex gap-2 mt-2 items-center">
+                          {typingUsers.map((u) => (
+                            <div
+                              key={u.userId}
+                              className="flex items-center gap-2"
+                            >
+                              <img
+                                src={u.image}
+                                alt={u.name}
+                                className="w-5 h-5 rounded-full object-cover border"
+                              />
+                              <p className="text-xs text-gray-500">
+                                {u.name} is typing...
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <div ref={messageEndRef} />
                     </div>

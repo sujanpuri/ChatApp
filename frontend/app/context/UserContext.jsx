@@ -38,18 +38,21 @@ export const UserProvider = ({ children }) => {
   }, [])
 
   // 🧠 2️⃣ Fetch all users from Firestore
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "users"))
-        const usersList = querySnapshot.docs.map((doc) => doc.data())
-        setAllUsers(usersList)
-      } catch (error) {
-        console.error("Error fetching users:", error)
-      }
-    }
-    fetchUsers()
-  }, [currentUser])
+useEffect(() => {
+  fetchUsers();
+}, [currentUser]);
+
+
+  const fetchUsers = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    const usersList = querySnapshot.docs.map((doc) => doc.data());
+    setAllUsers(usersList);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+  }
+};
+
 
   console.log("UserContext - All Users:", allUsers)
   console.log("UserContext - Current User:", currentUser)
