@@ -57,19 +57,35 @@ export default function MessagesPage() {
 
     fetchMessages();
   }, [activeChat]);
-
+  
   // --- Listen for new messages ---
   useEffect(() => {
     socket.on("receiveMessage", (msg) => {
+      // ✅ 1. Update current chat messages if active
       if (activeChat && msg.chatId === activeChat.chatId) {
         setMessages((prev) => [...prev, msg]);
       }
+
+      // ✅ 2. Update the chat preview in the chats list
+      queryClient.setQueryData(["userChats", currentUser?.uid], (oldChats) => {
+        if (!oldChats) return oldChats;
+
+        return oldChats.map((chat) =>
+          chat.chatId === msg.chatId
+            ? { ...chat, lastMessage: msg.text, lastMessageTime: msg.createdAt }
+            : chat
+        );
+      });
+
+      // ✅ 3. Optional: show alert if message is not from active chat
+      if (!activeChat || msg.chatId !== activeChat.chatId) {
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 3000);
+      }
     });
 
-    return () => {
-      socket.off("receiveMessage");
-    };
-  }, [activeChat]);
+    return () => socket.off("receiveMessage");
+  }, [activeChat, currentUser?.uid, queryClient]);
 
   // --- Send message ---
   const sendMessage = async () => {
@@ -174,8 +190,8 @@ export default function MessagesPage() {
 
       // Search filter by name or email
       return (
-        user.name.toLowerCase().includes(searchMembers.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchMembers.toLowerCase())
+        user.name?.toLowerCase().includes(searchMembers.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchMembers.toLowerCase())
       );
     });
   }, [allUsers, currentUser, searchMembers, activeChat]);
@@ -639,26 +655,42 @@ export default function MessagesPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-
               {/* Group list */}
               <ul className="space-y-2">
                 {chats
                   ?.filter((chat) =>
                     chat.name.toLowerCase().includes(searchTerm.toLowerCase())
                   )
-                  .map((chat) => (
-                    <li
-                      key={chat.chatId}
-                      onClick={() => setActiveChat(chat)}
-                      className={`p-3 bg-white rounded-lg shadow hover:bg-blue-50 cursor-pointer flex justify-between items-center transition ${
-                        activeChat?.chatId === chat.chatId ? "bg-blue-100" : ""
-                      }`}
-                    >
-                      <div className="font-semibold">{chat.name}</div>
+                  .map((chat) => {
+                    // 🧩 Get the most recent message
+                    const lastMessage =
+                      chat.messages?.length > 0
+                        ? chat.messages[chat.messages.length - 1].text
+                        : "No messages yet";
 
-                      {/* Optional: add last message or unread badge here */}
-                    </li>
-                  ))}
+                    return (
+                      <li
+                        key={chat.chatId}
+                        onClick={() => setActiveChat(chat)}
+                        className={`p-3 bg-white rounded-lg shadow hover:bg-blue-50 cursor-pointer flex justify-between items-center transition ${
+                          activeChat?.chatId === chat.chatId
+                            ? "bg-blue-100"
+                            : ""
+                        }`}
+                      >
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {chat.name}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate max-w-[200px]">
+                            {lastMessage}
+                          </div>
+                        </div>
+
+                        {/* Optional: unread badge or timestamp can go here */}
+                      </li>
+                    );
+                  })}
               </ul>
             </div>
           )}
