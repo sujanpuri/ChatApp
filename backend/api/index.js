@@ -1,9 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import connectDB from "./config/db.js";
-import chatRoutes from "./routes/chatRoutes.js";
-import messageRoutes from "./routes/messageRoutes.js";
+import connectDB from "../config/db.js";
+import chatRoutes from "../routes/chatRoutes.js";
+import messageRoutes from "../routes/messageRoutes.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
@@ -46,7 +46,7 @@ io.on("connection", (socket) => {
 
   // Real-time message seen
   socket.on("messageSeen", async ({ chatId, userId }) => {
-    const Message = (await import("./models/Message.js")).default;
+    const Message = (await import("../models/Message.js")).default;
 
     await Message.updateMany(
       { chatId, seenBy: { $ne: userId } },
@@ -74,3 +74,6 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+
+export default app;
