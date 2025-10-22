@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "../../../components/ui/popover";
 import { Plus, Users } from "lucide-react";
-import { Toaster } from "sonner";
+// import { useToast, ToastProvider } from "../../../components/ui/sooner";
 import Image from "next/image";
 
 export default function MessagesPage() {
@@ -29,6 +29,8 @@ export default function MessagesPage() {
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertHeading, setAlertHeading] = useState("");
   const [searchMembers, setSearchMembers] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -57,35 +59,15 @@ export default function MessagesPage() {
 
     fetchMessages();
   }, [activeChat]);
-  
-  // --- Listen for new messages ---
-  useEffect(() => {
-    socket.on("receiveMessage", (msg) => {
-      // ✅ 1. Update current chat messages if active
-      if (activeChat && msg.chatId === activeChat.chatId) {
-        setMessages((prev) => [...prev, msg]);
-      }
 
-      // ✅ 2. Update the chat preview in the chats list
-      queryClient.setQueryData(["userChats", currentUser?.uid], (oldChats) => {
-        if (!oldChats) return oldChats;
+  // --- Handle chat click ---
+  const handleOpenChat = (chat) => {
+    setActiveChat(chat);
+    // Optional: navigate or open modal
 
-        return oldChats.map((chat) =>
-          chat.chatId === msg.chatId
-            ? { ...chat, lastMessage: msg.text, lastMessageTime: msg.createdAt }
-            : chat
-        );
-      });
-
-      // ✅ 3. Optional: show alert if message is not from active chat
-      if (!activeChat || msg.chatId !== activeChat.chatId) {
-        setShowAlert(true);
-        setTimeout(() => setShowAlert(false), 3000);
-      }
-    });
-
-    return () => socket.off("receiveMessage");
-  }, [activeChat, currentUser?.uid, queryClient]);
+    // Mark messages as read instantly (client-side)
+    queryClient.invalidateQueries(["groupMessages"]);
+  };
 
   // --- Send message ---
   const sendMessage = async () => {
@@ -126,7 +108,9 @@ export default function MessagesPage() {
         members: memberList,
       });
 
-      alert(`✅ Group "${groupName}" created successfully!`);
+      setAlertMessage(`✅ Group "${groupName}" created successfully!`);
+      setAlertHeading("Group Created");
+      setShowAlert(true);
       setOpen(false);
       setGroupName("");
       setMembers("");
@@ -298,11 +282,6 @@ export default function MessagesPage() {
       socket.off("updateSeen", handleSeenUpdate);
     };
   }, []);
-
-  const handleClick = () => {
-    setShowAlert(true); // show the alert
-    setTimeout(() => setShowAlert(false), 3000); // auto-hide after 3 sec
-  };
 
   return (
     <div className="flex min-h-screen bg-gray-200 text-black">
@@ -657,48 +636,28 @@ export default function MessagesPage() {
               </div>
               {/* Group list */}
               <ul className="space-y-2">
-                {chats
-                  ?.filter((chat) =>
-                    chat.name.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((chat) => {
-                    // 🧩 Get the most recent message
-                    const lastMessage =
-                      chat.messages?.length > 0
-                        ? chat.messages[chat.messages.length - 1].text
-                        : "No messages yet";
-
-                    return (
-                      <li
-                        key={chat.chatId}
-                        onClick={() => setActiveChat(chat)}
-                        className={`p-3 bg-white rounded-lg shadow hover:bg-blue-50 cursor-pointer flex justify-between items-center transition ${
-                          activeChat?.chatId === chat.chatId
-                            ? "bg-blue-100"
-                            : ""
-                        }`}
-                      >
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {chat.name}
-                          </div>
-                          <div className="text-sm text-gray-500 truncate max-w-[200px]">
-                            {lastMessage}
-                          </div>
-                        </div>
-
-                        {/* Optional: unread badge or timestamp can go here */}
-                      </li>
-                    );
-                  })}
+                {chats?.map((chat) => (
+                  <li
+                    key={chat.chatId}
+                    onClick={() => handleOpenChat(chat)}
+                    className="p-3 rounded-lg shadow cursor-pointer flex justify-between items-center transition hover:bg-blue-100 bg-white"
+                  >
+                    <div>
+                      <div className="font-semibold text-gray-900">
+                        {chat.name}
+                      </div>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
         </div>
       </div>
       {showAlert && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
-          This is an alert message!
+        <div className="fixed flex flex-col bottom-4 right-4 bg-amber-300 text-white px-4 py-2 rounded shadow-lg">
+          <span>{alertHeading}</span>
+          <span>{alertMessage}</span>
         </div>
       )}
     </div>
